@@ -21,5 +21,11 @@ FlowLab uses 53 audited network-flow features to classify traffic as `Benign` or
 
 1. **Clone the repository:**
    ```bash
-   git clone [https://github.com/axylex/Multiclass-Network-Attack-Classification-from-Network-Flow-Features.git](https://github.com/axylex/Multiclass-Network-Attack-Classification-from-Network-Flow-Features.git)
+   git clone https://github.com/axylex/Multiclass-Network-Attack-Classification-from-Network-Flow-Features.git
    cd Multiclass-Network-Attack-Classification-from-Network-Flow-Features
+   ```
+2. Download the dataset: [CIC-IDS-Collection on Kaggle](https://www.kaggle.com/dsv/4477547) under its terms of use.
+3. Install Python dependencies: pip install pandas numpy scikit-learn xgboost pyarrow matplotlib seaborn jupyter
+4. Re-run the pipeline: Open ML_Evaluation.ipynb, point dataset_path to your local cic-collection.parquet file, and run all cells (seed=42) to reproduce the duplicate/feature audit, checkpoints, validation confusion matrices, and held-out test metrics.
+5. Preview the site locally: Serve the root directory with any static server (e.g., python -m http.server 8000) and open http://localhost:8000.
+
