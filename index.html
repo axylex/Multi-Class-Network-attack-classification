@@ -1,14 +1,1072 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="An interactive ES 335 research report on eight-class network intrusion classification."><title>FlowLab — Network Attack Classification</title><link rel="stylesheet" href="./styles.css"><script src="./data/results.js" defer></script><script src="./app.js" defer></script></head>
-<body><a class="skip" href="#main">Skip to content</a><header><a class="brand" href="#"><span class="brand-icon">≋</span> FlowLab<span class="brand-sub"> / ES 335</span></a><nav aria-label="Main navigation"><a href="#overview">Overview</a><a href="#data">Data & methods</a><a href="#results">Results</a><a href="#inspector">Flow inspector</a><a href="#reproduce">Reproduce ↗</a></nav><span class="course-tag">ML COURSE PROJECT</span></header>
-<main id="main"><section class="hero" id="overview"><div class="hero-copy"><div class="eyebrow"><span class="dot"></span> NETWORK SECURITY · APPLIED MACHINE LEARNING</div><h1>Reading the patterns.<br><em>Finding the attacks.</em></h1><p class="intro">Multiclass Network Attack Classification<br>from Network Flow Features</p><p class="hero-description">Can the statistics of a network flow distinguish everyday traffic from an attack? Explore eight traffic classes, five models, and the errors hidden behind high accuracy.</p><div class="hero-actions"><a class="button primary" href="#results">Explore the results <span>↗</span></a><a class="button" href="#inspector">Try the flow inspector →</a></div><div class="team">Adusumilli Viraat Krishna <span>24110016</span><br>Omer Mohammed Mubeenuddin <span>24110228</span></div></div><div class="hero-graphic" aria-label="Conceptual network flows assigned to eight traffic classes"><div class="graphic-top"><span>FLOW → FEATURES → CLASS</span><span class="pill">8 classes</span></div><svg viewBox="0 0 500 310" role="img" aria-label="Flow paths converging into a classifier and separating into traffic categories"><defs><linearGradient id="fade"><stop stop-color="#d5dce7"/><stop offset="1" stop-color="#2865ef"/></linearGradient></defs><g fill="none" stroke="url(#fade)" stroke-width="1.5"><path d="M0 45 C120 45 110 150 210 150"/><path d="M0 90 C90 90 140 150 210 150"/><path d="M0 150 H210"/><path d="M0 210 C130 210 100 150 210 150"/><path d="M0 265 C120 265 120 150 210 150"/></g><rect x="196" y="117" width="66" height="66" rx="16" fill="#2865ef"/><g stroke="white" fill="white"><circle cx="213" cy="137" r="3"/><circle cx="245" cy="137" r="3"/><circle cx="229" cy="162" r="3"/><path d="m213 137 16 25 16-25z" fill="none"/></g><g fill="none" stroke-width="2"><path stroke="#2865ef" d="M262 150 C335 150 305 36 390 36 H500"/><path stroke="#13a18c" d="M262 150 C335 150 305 82 390 82 H500"/><path stroke="#7f77d7" d="M262 150 C335 150 335 128 390 128 H500"/><path stroke="#e9a247" d="M262 150 C335 150 335 174 390 174 H500"/><path stroke="#a7b2c4" d="M262 150 C335 150 305 220 390 220 H500"/><path stroke="#bdc7d6" d="M262 150 C335 150 305 266 390 266 H500"/></g><g fill="#fbfcff" stroke="#dce2ec"><rect x="360" y="22" width="110" height="28" rx="14"/><rect x="360" y="68" width="110" height="28" rx="14"/><rect x="360" y="114" width="110" height="28" rx="14"/><rect x="360" y="160" width="110" height="28" rx="14"/><rect x="360" y="206" width="110" height="28" rx="14"/><rect x="360" y="252" width="110" height="28" rx="14"/></g><g font-size="11" fill="#45546c" text-anchor="middle" font-family="monospace"><text x="415" y="40">BENIGN</text><text x="415" y="86">DDoS</text><text x="415" y="132">DoS</text><text x="415" y="178">BOTNET</text><text x="415" y="224">INFILTRATION</text><text x="415" y="270">+ 3 CLASSES</text></g></svg><div class="graphic-bottom"><span>57 flow features</span><span>No packet payloads</span></div></div></section>
-<div class="stat-strip"><div><strong>9.17M</strong><span>flows in loaded dataset</span></div><div><strong>8</strong><span>traffic classes</span></div><div><strong>98.88<span>%</span></strong><span>XGBoost validation accuracy</span></div><div><strong>0.8528</strong><span>XGBoost validation macro-F1</span></div></div>
-<section class="section" id="scope"><div class="section-heading"><div><div class="eyebrow">01 / PROBLEM FORMULATION · 10 PTS</div><h2>One flow. Eight possible labels.</h2></div><span class="section-kicker">A closed-set classification study</span></div><div class="three-grid"><article><h3>The prediction unit</h3><p>One completed network flow, represented by packet counts, byte rates, durations, timing statistics and flags. Predict <code>ClassLabel</code> from flow metadata, without reading payload content.</p></article><article><h3>The decision</h3><p>Benign, Botnet, Bruteforce, DDoS, DoS, Infiltration, Portscan or Webattack. These are the eight existing collection labels; no additional regrouping or removal of rare classes is shown.</p></article><article><h3>The boundary of the claim</h3><p>Performance describes this benchmark and its split. It does not establish detection of unseen attack families, early-flow detection, or generalization to a new network or time period.</p></article></div></section>
-<section class="section" id="data"><div class="section-heading"><div><div class="eyebrow">02 / DATA UNDERSTANDING · 10 PTS</div><h2>A large dataset. An uneven playing field.</h2></div><a class="text-link" href="https://www.kaggle.com/dsv/4477547" target="_blank" rel="noopener">Dataset source ↗</a></div><div class="two-grid data-layout"><article><p class="lead">Benign flows outnumber Portscan flows by roughly <strong>3,187 to 1</strong>.</p><p>The notebook loads <code>cic-collection.parquet</code>: 9,167,581 rows and 59 columns. Removing <code>Label</code> and separating <code>ClassLabel</code> leaves 57 numeric predictors.</p><p>The CIC-IDS-Collection catalog combines CIC-IDS2017, CIC-DoS2017, CSE-CIC-IDS2018 and CIC-DDoS2019 with harmonized labels and feature cleanup. The notebook's local file has no recorded download version or hash, so its exact provenance still needs confirmation.</p><div class="note">A majority-only classifier already reaches <strong id="majorityAccuracy"></strong> validation accuracy. That makes per-class recall and macro-F1 essential.</div><p class="small">Source: saved notebook output, before any additional duplicate audit. Public benchmark access may require a Kaggle account and acceptance of dataset terms.</p></article><article class="panel"><div class="panel-title"><h3>Class distribution</h3><label class="small"><input type="checkbox" id="logScale" checked> Log scale</label></div><div id="distribution"></div><div class="caption">Full loaded dataset · counts shown on every bar</div></article></div></section>
-<section class="section" id="methods"><div class="section-heading"><div><div class="eyebrow">03 / PREPROCESSING & STATISTICAL REASONING · 10 PTS</div><h2>Clean the data. Protect the evaluation.</h2></div><span class="pill">Notes reconciled with notebook</span></div><div class="method-grid"><article class="method"><span class="step">01</span><h3>Remove the answer key</h3><p><code>Label</code> is dropped; <code>ClassLabel</code> becomes the sole target. Numeric label encoding identifies categories without adding an order to the prediction task.</p><span class="status">✓ In notebook</span></article><article class="method"><span class="step">02</span><h3>Handle invalid values</h3><p>Replace ±∞ with NaN, then drop incomplete rows. Zero-duration rate calculations can generate invalid values. The recorded cleaning output removes no rows.</p><span class="status">✓ In notebook</span></article><article class="method"><span class="step">03</span><h3>Audit duplicates first</h3><p>Check repeated column names and identical feature columns (such as duplicate header-length fields) before duplicate rows. Group identical flow features across splits; investigate conflicting labels.</p><span class="status pending">○ Recommended · not recorded</span></article><article class="method"><span class="step">04</span><h3>Filter constant features</h3><p>Fit a zero-variance filter on training data only and reuse its column mask. Features such as Bwd PSH Flags can be constant in some datasets; verify this file rather than assuming.</p><span class="status pending">○ Recommended · not recorded</span></article><article class="method"><span class="step">05</span><h3>Scale inside the pipeline</h3><p>RobustScaler uses training medians and interquartile ranges for the linear baseline and MLP. It reduces sensitivity to extreme feature scales; it does not remove outliers. Tree ensembles are unscaled.</p><span class="status">✓ In notebook</span></article><article class="method"><span class="step">06</span><h3>Work within memory limits</h3><p>A stratified 20% sample of the training split leaves 1,283,462 rows. This approximates class proportions, not guaranteed convergence. The notebook downcasts to float16/32; its cast warnings warrant a precision audit.</p><span class="status">✓ Subsampling recorded</span></article></div><details><summary>Why duplicate handling matters</summary><p>Network polling may produce repeated records, but identical feature vectors are not automatically the same event. Define and document a duplicate policy, remove redundant columns first, then count exact rows and conflicting-label feature groups. Preserve event IDs where available, and keep related flows in one split. Report before/after class counts. The current notebook shows neither duplicate removal nor a group-aware split; its reported scores should be read with that limitation.</p></details></section>
-<section class="section" id="models"><div class="section-heading"><div><div class="eyebrow">04 / BASELINES & METHOD SELECTION · 15 PTS</div><h2>Different assumptions. Different errors.</h2></div></div><div class="table-scroll"><table><thead><tr><th>Model</th><th>Why use it?</th><th>Recorded configuration</th></tr></thead><tbody><tr><td>Majority baseline</td><td>A prevalence-based sanity check; computed here from validation support.</td><td>Always predict Benign</td></tr><tr><td>Linear baseline (SGD)</td><td>Log-loss linear decision boundaries; exposes whether linear separation is adequate.</td><td>RobustScaler · balanced weights · seed 42</td></tr><tr><td>Random Forest</td><td>Bagged trees capture interactions and nonlinear boundaries.</td><td>50 trees · depth 15 · balanced weights</td></tr><tr><td>Histogram Gradient Boosting</td><td>Boosted binned trees improve residual errors with efficient split search.</td><td>100 iterations · learning rate 0.1</td></tr><tr><td>XGBoost</td><td>Regularized boosted trees model nonlinear feature interactions.</td><td>100 trees · depth 6 · rate 0.1 · hist</td></tr><tr><td>MLP</td><td>A nonlinear neural alternative; sensitive to scale and class imbalance.</td><td>128 → 64 → 32 · batch 2,048 · early stopping</td></tr></tbody></table></div><p class="small">The baseline is SGDClassifier(loss='log_loss'), not a fitted multinomial LogisticRegression estimator. Only the SGD baseline and Random Forest explicitly use balanced class weights in this notebook; the XGBoost fit has no sample weights.</p></section>
-<section class="section" id="evaluation"><div class="section-heading"><div><div class="eyebrow">05 / EVALUATION DESIGN · 20 PTS</div><h2>Keep model selection away from the test set.</h2></div></div><div class="split-bar"><div>70% TRAIN<span>6,417,306 flows</span></div><div>15% VALIDATION<span>1,375,137 flows</span></div><div>15% TEST<span>1,375,138 flows</span></div></div><div class="three-grid"><article><h3>Stratified, seed 42</h3><p>Two random splits preserve approximate class proportions. The training partition is then subsampled to 20%; validation and test remain intact. This is not a host- or time-disjoint evaluation.</p></article><article><h3>Metrics with a purpose</h3><p>Macro-F1 gives every class equal weight. Precision measures false-alert burden; recall measures missed attacks. Weighted-F1 and accuracy summarize frequency-weighted behavior. One-vs-rest PR curves expose rare-class tradeoffs.</p></article><article><h3>Selection vs. final evaluation</h3><p>Model comparisons below use validation results. The notebook later loads the test set for XGBoost ROC and PR curves. No systematic search log, test classification report, or repeated-run confidence intervals are recorded.</p></article></div></section>
-<section class="section results-section" id="results"><div class="section-heading"><div><div class="eyebrow">06 / RESULTS, ERRORS & LIMITATIONS · 10 PTS</div><h2>High accuracy isn't the whole story.</h2><p>Inspect each class. Follow the mistakes.</p></div><a class="text-link" href="./data/results.json" download>Download results JSON ↓</a></div><div class="explorer-toolbar"><div><span class="live-dot"></span> MODEL EXPLORER <span class="muted">/ Validation set</span></div><label>Model <select id="modelSelect" aria-label="Select model"></select></label></div><div class="metric-grid" id="modelMetrics"></div><div class="two-grid charts"><article class="panel"><div class="panel-title"><h3>Per-class performance</h3><label><select id="metricSelect" aria-label="Performance metric"><option value="2">F1-score</option><option value="0">Precision</option><option value="1">Recall</option></select></label></div><div id="performance"></div><p class="caption">0 = lowest · 1 = highest · notebook reports rounded to two decimals</p></article><article class="panel matrix-panel"><div class="panel-title"><h3>Where predictions go</h3><label class="small"><input type="checkbox" id="normalize" checked> Row %</label></div><div class="caption axis">TRUE CLASS ↓ &nbsp; PREDICTED CLASS →</div><div class="matrix-scroll"><div id="matrix"></div></div><div class="diagnostic" id="diagnostic" aria-live="polite"></div><p class="caption" id="matrixSource"></p></article></div><div class="insight"><span class="insight-icon">↳</span><div><h3>The blind spot: Infiltration</h3><p>XGBoost assigns <strong>13,769 of 14,229</strong> validation Infiltration flows to Benign. Its Infiltration recall is just <strong>3.2%</strong>, despite 98.88% overall accuracy. Similar flow summaries are a plausible explanation, not a proven causal mechanism.</p></div></div><div class="three-grid limitation-grid"><article><h3>Convergence is not a verdict</h3><p>The SGD baseline hit its iteration limit. This may reflect scaling, optimization settings or difficult data; it does not prove linear models cannot converge. Tune it before drawing a strong model-family conclusion.</p></article><article><h3>Rare classes disappear in the MLP</h3><p>This run has zero recall for Infiltration, Portscan and Webattack. Imbalance is a plausible factor; it is not proof that an MLP cannot learn them. Compare weighting or resampling on training folds and inspect learning curves.</p></article><article><h3>Ranking isn't a deployment threshold</h3><p>The reported test Infiltration ROC-AUC is about 0.921. Multiclass prediction uses the largest score, not a universal 0.5 threshold. Any class-specific alert threshold needs validation-based calibration and a false-positive budget.</p></article></div><details><summary>View original notebook figures and evidence</summary><p>These are the saved output images, not regenerated experiments. The matrix is validation data; ROC and PR figures use test data.</p><div class="figure-grid"><figure><img loading="lazy" src="./assets/notebook-23-0.png" alt="Original XGBoost validation confusion matrix"><figcaption>Validation confusion matrix</figcaption></figure><figure><img loading="lazy" src="./assets/notebook-23-1.png" alt="Original XGBoost feature importance plot"><figcaption>Feature importance · model-specific, not causal</figcaption></figure><figure><img loading="lazy" src="./assets/notebook-29-0.png" alt="Original XGBoost test one-versus-rest ROC curves"><figcaption>Test ROC curves</figcaption></figure><figure><img loading="lazy" src="./assets/notebook-31-1.png" alt="Original XGBoost test precision-recall curves"><figcaption>Test precision-recall curves</figcaption></figure></div></details></section>
-<section class="section" id="inspector"><div class="section-heading"><div><div class="eyebrow">INTERACTIVE LAB / FEATURE SENSITIVITY</div><h2>What changes when a flow changes?</h2><p>Move a feature. Observe how a simplified scoring rule responds.</p></div><span class="pill amber">Illustrative simulation</span></div><div class="simulation-disclaimer">This is an educational heuristic, <strong>not the trained XGBoost model</strong>. Scores are synthetic and uncalibrated; presets are invented examples. Contributions explain this toy rule, not the notebook model. Independent slider changes may produce physically inconsistent flows.</div><div class="two-grid inspector-grid"><article class="panel"><div class="panel-title"><h3>Flow features</h3><button class="text-button" id="reset">Reset ↺</button></div><div class="presets" aria-label="Example flow presets"><button data-preset="web" class="selected">Benign web</button><button data-preset="flood">DDoS flood</button><button data-preset="scan">Portscan</button></div><div id="sliders"></div><label class="threshold-label" for="threshold">Review threshold <output id="thresholdValue"></output></label><input id="threshold" type="range" min="20" max="95" value="60" step="1"><p class="caption">If the highest toy score is below this threshold, request review. This changes the decision, not the distribution.</p></article><article class="panel"><div class="panel-title"><h3>Simulated class distribution</h3><span class="pill">Live</span></div><div class="prediction" id="prediction" aria-live="polite"></div><div id="probabilities"></div><details open><summary>Why did the toy rule respond?</summary><div id="contributions"></div><p class="caption">Additive score terms before softmax. A larger positive term favors the current leading class; these are not SHAP values.</p></details></article></div></section>
-<section class="section" id="reproduce"><div class="section-heading"><div><div class="eyebrow">07 / REPRODUCIBILITY & TECHNICAL INTEGRITY · 5 PTS</div><h2>Inspect the work. Rebuild the result.</h2></div><a class="button primary" href="https://github.com/axylex/Multi-Class-Network-attack-classification" target="_blank" rel="noopener">Source repository ↗</a></div><div class="two-grid"><article><h3>Rebuild the analysis</h3><ol class="steps"><li>Obtain the public CIC-IDS-Collection data under its terms. Record the precise release, download URL and SHA-256 hash.</li><li>Open <a href="https://github.com/axylex/Multi-Class-Network-attack-classification/blob/b8401c1cbdad95366c2d76509542c526c0535d98/ML_Evaluation.ipynb">ML_Evaluation.ipynb at the reviewed commit</a>. Install pandas, NumPy, scikit-learn, XGBoost, pyarrow, Matplotlib and seaborn.</li><li>Replace the Colab Drive path with your local parquet path. Run cleaning and splitting before writing the three clean checkpoints.</li><li>Train with seed 42. Use validation for model choice; freeze decisions before the final test evaluation. Export predictions and exact metrics.</li></ol><a class="text-link" href="./README.md" download>Setup & submission checklist ↓</a></article><article class="panel"><h3>Remaining reproducibility gaps</h3><ul class="checklist"><li>Dataset release, checksum and exact installed package versions: <strong>[INSERT VERIFIED VALUES]</strong></li><li>Duplicate and constant-column audit: <strong>[INSERT COUNTS]</strong></li><li>Final test classification report and numeric PR/ROC exports: <strong>[INSERT EXPORTS]</strong></li><li>Other model confusion matrices: <strong>[INSERT MATRICES]</strong></li><li>Host/time-aware evaluation, repeated seeds and uncertainty: future work.</li></ul><p class="small">This website transcribes saved outputs. It does not rerun training or imply the full pipeline was independently reproduced.</p></article></div><div class="two-grid disclosure"><article><h3>AI-use disclosure</h3><p>AI assistance was used to build this website, transcribe and structure saved notebook results, and review the supplied methodological notes. The browser simulation is AI-authored illustrative code. Model training was not rerun for this website.</p><p><strong>[TEAM TO COMPLETE]</strong> Identify the AI tools used during the original analysis, what they contributed, and how their suggestions and code were checked. The original analysis's AI-use history is not established by the repository.</p></article><article><h3>Data privacy notice</h3><p>This static website contains aggregate metrics, saved plots, and synthetic flow examples. It contains no private flow records, packet payloads, credentials or API keys. The inspector runs locally in your browser and sends no feature values to a server.</p></article></div><details id="references"><summary>Citations & references</summary><ol class="references"><li>D'hooge, L. <a href="https://www.kaggle.com/dsv/4477547">CIC-IDS-Collection</a>. Dataset catalog; confirm the precise version used.</li><li>Sharafaldin, I., Lashkari, A. H., & Ghorbani, A. A. (2018). Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization. ICISSP. <a href="https://www.unb.ca/cic/datasets/ids-2017.html">CIC dataset documentation</a>.</li><li>Pedregosa, F., et al. (2011). Scikit-learn: Machine Learning in Python. JMLR 12, 2825–2830. <a href="https://scikit-learn.org/stable/modules/sgd.html">SGD documentation</a> · <a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html">RobustScaler</a>.</li><li>Chen, T., & Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. KDD. <a href="https://doi.org/10.1145/2939672.2939785">doi:10.1145/2939672.2939785</a>.</li><li>Harris, C. R., et al. (2020). Array programming with NumPy. Nature 585, 357–362. <a href="https://doi.org/10.1038/s41586-020-2649-2">DOI</a>. McKinney, W. (2010). Data Structures for Statistical Computing in Python. SciPy. <a href="https://doi.org/10.25080/Majora-92bf1922-00a">DOI</a>.</li><li>Hunter, J. D. (2007). Matplotlib: A 2D Graphics Environment. Computing in Science & Engineering 9(3), 90–95. <a href="https://doi.org/10.1109/MCSE.2007.55">DOI</a>. Waskom, M. (2021). seaborn: statistical data visualization. JOSS 6(60), 3021. <a href="https://doi.org/10.21105/joss.03021">DOI</a>.</li><li><a href="https://arrow.apache.org/docs/python/">Apache Arrow / PyArrow documentation</a>; <a href="https://github.com/ahlashkari/CICFlowMeter">CICFlowMeter</a>, flow-feature extraction. Record versions and any additional external code used in the analysis.</li><li>Project notebook: Adusumilli Viraat Krishna and Omer Mohammed Mubeenuddin, <a href="https://github.com/axylex/Multi-Class-Network-attack-classification/tree/b8401c1cbdad95366c2d76509542c526c0535d98">repository snapshot b8401c1</a>. Numeric tables reproduced from saved validation outputs; XGBoost matrix transcribed from its saved plot.</li></ol></details></section>
-</main><footer><div class="brand">≋ FlowLab <span class="brand-sub">/ ES 335</span></div><p>Machine Learning Course Project<br>Adusumilli Viraat Krishna · Omer Mohammed Mubeenuddin</p><a href="#overview">Back to top ↑</a></footer><noscript><p class="note">Enable JavaScript for the interactive explorers. The report and original notebook figures remain available without it.</p></noscript></body></html>
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width,initial-scale=1" name="viewport"/>
+  <meta content="An interactive ES 335 research report on eight-class network intrusion classification." name="description"/>
+  <title>
+   FlowLab — Network Attack Classification
+  </title>
+  <link href="./styles.css" rel="stylesheet"/>
+  <script defer="" src="./data/results.js">
+  </script>
+  <script defer="" src="./app.js">
+  </script>
+ </head>
+ <body>
+  <a class="skip" href="#main">
+   Skip to content
+  </a>
+  <header>
+   <a class="brand" href="#">
+    <span class="brand-icon">
+     ≋
+    </span>
+    FlowLab
+    <span class="brand-sub">
+     / ES 335
+    </span>
+   </a>
+   <nav aria-label="Main navigation">
+    <a href="#overview">
+     Overview
+    </a>
+    <a href="#data">
+     Data &amp; methods
+    </a>
+    <a href="#results">
+     Results
+    </a>
+    <a href="#inspector">
+     Flow inspector
+    </a>
+    <a href="#reproduce">
+     Reproduce ↗
+    </a>
+   </nav>
+   <span class="course-tag">
+    ML COURSE PROJECT
+   </span>
+  </header>
+  <main id="main">
+   <section class="hero" id="overview">
+    <div class="hero-copy">
+     <div class="eyebrow">
+      <span class="dot">
+      </span>
+      NETWORK SECURITY · APPLIED MACHINE LEARNING
+     </div>
+     <h1>
+      Reading the patterns.
+      <br/>
+      <em>
+       Finding the attacks.
+      </em>
+     </h1>
+     <p class="intro">
+      Multiclass Network Attack Classification
+      <br/>
+      from Network Flow Features
+     </p>
+     <p class="hero-description">
+      Can the statistics of a network flow distinguish everyday traffic from an attack? Explore eight traffic classes, five models, and the errors hidden behind high accuracy.
+     </p>
+     <div class="hero-actions">
+      <a class="button primary" href="#results">
+       Explore the results
+       <span>
+        ↗
+       </span>
+      </a>
+      <a class="button" href="#inspector">
+       Try the flow inspector →
+      </a>
+     </div>
+     <div class="team">
+      Adusumilli Viraat Krishna
+      <span>
+       24110016
+      </span>
+      <br/>
+      Omer Mohammed Mubeenuddin
+      <span>
+       24110228
+      </span>
+     </div>
+    </div>
+    <div aria-label="Conceptual network flows assigned to eight traffic classes" class="hero-graphic">
+     <div class="graphic-top">
+      <span>
+       FLOW → FEATURES → CLASS
+      </span>
+      <span class="pill">
+       8 classes
+      </span>
+     </div>
+     <svg aria-label="Flow paths converging into a classifier and separating into traffic categories" role="img" viewbox="0 0 500 310">
+      <defs>
+       <lineargradient id="fade">
+        <stop stop-color="#d5dce7">
+        </stop>
+        <stop offset="1" stop-color="#2865ef">
+        </stop>
+       </lineargradient>
+      </defs>
+      <g fill="none" stroke="url(#fade)" stroke-width="1.5">
+       <path d="M0 45 C120 45 110 150 210 150">
+       </path>
+       <path d="M0 90 C90 90 140 150 210 150">
+       </path>
+       <path d="M0 150 H210">
+       </path>
+       <path d="M0 210 C130 210 100 150 210 150">
+       </path>
+       <path d="M0 265 C120 265 120 150 210 150">
+       </path>
+      </g>
+      <rect fill="#2865ef" height="66" rx="16" width="66" x="196" y="117">
+      </rect>
+      <g fill="white" stroke="white">
+       <circle cx="213" cy="137" r="3">
+       </circle>
+       <circle cx="245" cy="137" r="3">
+       </circle>
+       <circle cx="229" cy="162" r="3">
+       </circle>
+       <path d="m213 137 16 25 16-25z" fill="none">
+       </path>
+      </g>
+      <g fill="none" stroke-width="2">
+       <path d="M262 150 C335 150 305 36 390 36 H500" stroke="#2865ef">
+       </path>
+       <path d="M262 150 C335 150 305 82 390 82 H500" stroke="#13a18c">
+       </path>
+       <path d="M262 150 C335 150 335 128 390 128 H500" stroke="#7f77d7">
+       </path>
+       <path d="M262 150 C335 150 335 174 390 174 H500" stroke="#e9a247">
+       </path>
+       <path d="M262 150 C335 150 305 220 390 220 H500" stroke="#a7b2c4">
+       </path>
+       <path d="M262 150 C335 150 305 266 390 266 H500" stroke="#bdc7d6">
+       </path>
+      </g>
+      <g fill="#fbfcff" stroke="#dce2ec">
+       <rect height="28" rx="14" width="110" x="360" y="22">
+       </rect>
+       <rect height="28" rx="14" width="110" x="360" y="68">
+       </rect>
+       <rect height="28" rx="14" width="110" x="360" y="114">
+       </rect>
+       <rect height="28" rx="14" width="110" x="360" y="160">
+       </rect>
+       <rect height="28" rx="14" width="110" x="360" y="206">
+       </rect>
+       <rect height="28" rx="14" width="110" x="360" y="252">
+       </rect>
+      </g>
+      <g fill="#45546c" font-family="monospace" font-size="11" text-anchor="middle">
+       <text x="415" y="40">
+        BENIGN
+       </text>
+       <text x="415" y="86">
+        DDoS
+       </text>
+       <text x="415" y="132">
+        DoS
+       </text>
+       <text x="415" y="178">
+        BOTNET
+       </text>
+       <text x="415" y="224">
+        INFILTRATION
+       </text>
+       <text x="415" y="270">
+        + 3 CLASSES
+       </text>
+      </g>
+     </svg>
+     <div class="graphic-bottom">
+      <span>
+       57 flow features
+      </span>
+      <span>
+       No packet payloads
+      </span>
+     </div>
+    </div>
+   </section>
+   <div class="stat-strip">
+    <div>
+     <strong>
+      9.17M
+     </strong>
+     <span>
+      flows in loaded dataset
+     </span>
+    </div>
+    <div>
+     <strong>
+      8
+     </strong>
+     <span>
+      traffic classes
+     </span>
+    </div>
+    <div>
+     <strong>
+      98.88
+      <span>
+       %
+      </span>
+     </strong>
+     <span>
+      XGBoost validation accuracy
+     </span>
+    </div>
+    <div>
+     <strong>
+      0.8528
+     </strong>
+     <span>
+      XGBoost validation macro-F1
+     </span>
+    </div>
+   </div>
+   <section class="section" id="scope">
+    <div class="section-heading">
+     <div>
+      <div class="eyebrow">
+       01 / PROBLEM FORMULATION · 10 PTS
+      </div>
+      <h2>
+       One flow. Eight possible labels.
+      </h2>
+     </div>
+     <span class="section-kicker">
+      A closed-set classification study
+     </span>
+    </div>
+    <div class="three-grid">
+     <article>
+      <h3>
+       The prediction unit
+      </h3>
+      <p>
+       One completed network flow, represented by packet counts, byte rates, durations, timing statistics and flags. Predict
+       <code>
+        ClassLabel
+       </code>
+       from flow metadata, without reading payload content.
+      </p>
+     </article>
+     <article>
+      <h3>
+       The decision
+      </h3>
+      <p>
+       Benign, Botnet, Bruteforce, DDoS, DoS, Infiltration, Portscan or Webattack. These are the eight existing collection labels; no additional regrouping or removal of rare classes is shown.
+      </p>
+     </article>
+     <article>
+      <h3>
+       The boundary of the claim
+      </h3>
+      <p>
+       Performance describes this benchmark and its split. It does not establish detection of unseen attack families, early-flow detection, or generalization to a new network or time period.
+      </p>
+     </article>
+    </div>
+   </section>
+   <section class="section" id="data">
+    <div class="section-heading">
+     <div>
+      <div class="eyebrow">
+       02 / DATA UNDERSTANDING · 10 PTS
+      </div>
+      <h2>
+       A large dataset. An uneven playing field.
+      </h2>
+     </div>
+     <a class="text-link" href="https://www.kaggle.com/dsv/4477547" rel="noopener" target="_blank">
+      Dataset source ↗
+     </a>
+    </div>
+    <div class="two-grid data-layout">
+     <article>
+      <p class="lead">
+       Benign flows outnumber Portscan flows by roughly
+       <strong>
+        3,187 to 1
+       </strong>
+       .
+      </p>
+      <p>
+       The notebook loads
+       <code>
+        cic-collection.parquet
+       </code>
+       : 9,167,581 rows and 59 columns. Removing
+       <code>
+        Label
+       </code>
+       and separating
+       <code>
+        ClassLabel
+       </code>
+       leaves 57 numeric predictors.
+      </p>
+      <p>
+       The CIC-IDS-Collection catalog combines CIC-IDS2017, CIC-DoS2017, CSE-CIC-IDS2018 and CIC-DDoS2019 with harmonized labels and feature cleanup. The notebook's local file has no recorded download version or hash, so its exact provenance still needs confirmation.
+      </p>
+      <div class="note">
+       A majority-only classifier already reaches
+       <strong id="majorityAccuracy">
+       </strong>
+       validation accuracy. That makes per-class recall and macro-F1 essential.
+      </div>
+      <p class="small">
+       Source: saved notebook output, before any additional duplicate audit. Public benchmark access may require a Kaggle account and acceptance of dataset terms.
+      </p>
+     </article>
+     <article class="panel">
+      <div class="panel-title">
+       <h3>
+        Class distribution
+       </h3>
+       <label class="small">
+        <input checked="" id="logScale" type="checkbox"/>
+        Log scale
+       </label>
+      </div>
+      <div id="distribution">
+      </div>
+      <div class="caption">
+       Full loaded dataset · counts shown on every bar
+      </div>
+     </article>
+    </div>
+   </section>
+   <section class="section" id="methods">
+    <div class="section-heading">
+     <div>
+      <div class="eyebrow">
+       03 / PREPROCESSING &amp; STATISTICAL REASONING · 10 PTS
+      </div>
+      <h2>
+       Clean the data. Protect the evaluation.
+      </h2>
+     </div>
+     <span class="pill">
+      Notes reconciled with notebook
+     </span>
+    </div>
+    <div class="method-grid">
+     <article class="method">
+      <span class="step">
+       01
+      </span>
+      <h3>
+       Remove the answer key
+      </h3>
+      <p>
+       <code>
+        Label
+       </code>
+       is dropped;
+       <code>
+        ClassLabel
+       </code>
+       becomes the sole target. Numeric label encoding identifies categories without adding an order to the prediction task.
+      </p>
+      <span class="status">
+       ✓ In notebook
+      </span>
+     </article>
+     <article class="method">
+      <span class="step">
+       02
+      </span>
+      <h3>
+       Handle invalid values
+      </h3>
+      <p>
+       Replace ±∞ with NaN, then drop incomplete rows. Zero-duration rate calculations can generate invalid values. The recorded cleaning output removes no rows.
+      </p>
+      <span class="status">
+       ✓ In notebook
+      </span>
+     </article>
+     <article class="method">
+      <span class="step">
+       03
+      </span>
+      <h3>
+       Audit duplicates first
+      </h3>
+      <p>
+       Check repeated column names and identical feature columns (such as duplicate header-length fields) before duplicate rows. Group identical flow features across splits; investigate conflicting labels.
+      </p>
+      <span class="status pending">
+       ○ Recommended · not recorded
+      </span>
+     </article>
+     <article class="method">
+      <span class="step">
+       04
+      </span>
+      <h3>
+       Filter constant features
+      </h3>
+      <p>
+       Fit a zero-variance filter on training data only and reuse its column mask. Features such as Bwd PSH Flags can be constant in some datasets; verify this file rather than assuming.
+      </p>
+      <span class="status pending">
+       ○ Recommended · not recorded
+      </span>
+     </article>
+     <article class="method">
+      <span class="step">
+       05
+      </span>
+      <h3>
+       Scale inside the pipeline
+      </h3>
+      <p>
+       RobustScaler uses training medians and interquartile ranges for the linear baseline and MLP. It reduces sensitivity to extreme feature scales; it does not remove outliers. Tree ensembles are unscaled.
+      </p>
+      <span class="status">
+       ✓ In notebook
+      </span>
+     </article>
+     <article class="method">
+      <span class="step">
+       06
+      </span>
+      <h3>
+       Work within memory limits
+      </h3>
+      <p>
+       A stratified 20% sample of the training split leaves 1,283,462 rows. This approximates class proportions, not guaranteed convergence. The notebook downcasts to float16/32; its cast warnings warrant a precision audit.
+      </p>
+      <span class="status">
+       ✓ Subsampling recorded
+      </span>
+     </article>
+    </div>
+    <details>
+     <summary>
+      Why duplicate handling matters
+     </summary>
+     <p>
+      Network polling may produce repeated records, but identical feature vectors are not automatically the same event. Define and document a duplicate policy, remove redundant columns first, then count exact rows and conflicting-label feature groups. Preserve event IDs where available, and keep related flows in one split. Report before/after class counts. The current notebook shows neither duplicate removal nor a group-aware split; its reported scores should be read with that limitation.
+     </p>
+    </details>
+   </section>
+   <section class="section" id="models">
+    <div class="section-heading">
+     <div>
+      <div class="eyebrow">
+       04 / BASELINES &amp; METHOD SELECTION · 15 PTS
+      </div>
+      <h2>
+       Different assumptions. Different errors.
+      </h2>
+     </div>
+    </div>
+    <div class="table-scroll">
+     <table>
+      <thead>
+       <tr>
+        <th>
+         Model
+        </th>
+        <th>
+         Why use it?
+        </th>
+        <th>
+         Recorded configuration
+        </th>
+       </tr>
+      </thead>
+      <tbody>
+       <tr>
+        <td>
+         Majority baseline
+        </td>
+        <td>
+         A prevalence-based sanity check; computed here from validation support.
+        </td>
+        <td>
+         Always predict Benign
+        </td>
+       </tr>
+       <tr>
+        <td>
+         Linear baseline (SGD)
+        </td>
+        <td>
+         Log-loss linear decision boundaries; exposes whether linear separation is adequate.
+        </td>
+        <td>
+         RobustScaler · balanced weights · seed 42
+        </td>
+       </tr>
+       <tr>
+        <td>
+         Random Forest
+        </td>
+        <td>
+         Bagged trees capture interactions and nonlinear boundaries.
+        </td>
+        <td>
+         50 trees · depth 15 · balanced weights
+        </td>
+       </tr>
+       <tr>
+        <td>
+         Histogram Gradient Boosting
+        </td>
+        <td>
+         Boosted binned trees improve residual errors with efficient split search.
+        </td>
+        <td>
+         100 iterations · learning rate 0.1
+        </td>
+       </tr>
+       <tr>
+        <td>
+         XGBoost
+        </td>
+        <td>
+         Regularized boosted trees model nonlinear feature interactions.
+        </td>
+        <td>
+         100 trees · depth 6 · rate 0.1 · hist
+        </td>
+       </tr>
+       <tr>
+        <td>
+         MLP
+        </td>
+        <td>
+         A nonlinear neural alternative; sensitive to scale and class imbalance.
+        </td>
+        <td>
+         128 → 64 → 32 · batch 2,048 · early stopping
+        </td>
+       </tr>
+      </tbody>
+     </table>
+    </div>
+    <p class="small">
+     The baseline is SGDClassifier(loss='log_loss'), not a fitted multinomial LogisticRegression estimator. Only the SGD baseline and Random Forest explicitly use balanced class weights in this notebook; the XGBoost fit has no sample weights.
+    </p>
+   </section>
+   <section class="section" id="evaluation">
+    <div class="section-heading">
+     <div>
+      <div class="eyebrow">
+       05 / EVALUATION DESIGN · 20 PTS
+      </div>
+      <h2>
+       Keep model selection away from the test set.
+      </h2>
+     </div>
+    </div>
+    <div class="split-bar">
+     <div>
+      70% TRAIN
+      <span>
+       6,417,306 flows
+      </span>
+     </div>
+     <div>
+      15% VALIDATION
+      <span>
+       1,375,137 flows
+      </span>
+     </div>
+     <div>
+      15% TEST
+      <span>
+       1,375,138 flows
+      </span>
+     </div>
+    </div>
+    <div class="three-grid">
+     <article>
+      <h3>
+       Stratified, seed 42
+      </h3>
+      <p>
+       Two random splits preserve approximate class proportions. The training partition is then subsampled to 20%; validation and test remain intact. This is not a host- or time-disjoint evaluation.
+      </p>
+     </article>
+     <article>
+      <h3>
+       Metrics with a purpose
+      </h3>
+      <p>
+       Macro-F1 gives every class equal weight. Precision measures false-alert burden; recall measures missed attacks. Weighted-F1 and accuracy summarize frequency-weighted behavior. One-vs-rest PR curves expose rare-class tradeoffs.
+      </p>
+     </article>
+     <article>
+      <h3>
+       Selection vs. final evaluation
+      </h3>
+      <p>
+       Model comparisons below use validation results. The notebook later loads the test set for XGBoost ROC and PR curves. No systematic search log, test classification report, or repeated-run confidence intervals are recorded.
+      </p>
+     </article>
+    </div>
+   </section>
+   <section class="section results-section" id="results">
+    <div class="section-heading">
+     <div>
+      <div class="eyebrow">
+       06 / RESULTS, ERRORS &amp; LIMITATIONS · 10 PTS
+      </div>
+      <h2>
+       High accuracy isn't the whole story.
+      </h2>
+      <p>
+       Inspect each class. Follow the mistakes.
+      </p>
+     </div>
+     <a class="text-link" download="" href="./data/results.json">
+      Download results JSON ↓
+     </a>
+    </div>
+    <div class="explorer-toolbar">
+     <div>
+      <span class="live-dot">
+      </span>
+      MODEL EXPLORER
+      <span class="muted">
+       / Validation set
+      </span>
+     </div>
+     <label>
+      Model
+      <select aria-label="Select model" id="modelSelect">
+      </select>
+     </label>
+    </div>
+    <div class="metric-grid" id="modelMetrics">
+    </div>
+    <div class="two-grid charts">
+     <article class="panel">
+      <div class="panel-title">
+       <h3>
+        Per-class performance
+       </h3>
+       <label>
+        <select aria-label="Performance metric" id="metricSelect">
+         <option value="2">
+          F1-score
+         </option>
+         <option value="0">
+          Precision
+         </option>
+         <option value="1">
+          Recall
+         </option>
+        </select>
+       </label>
+      </div>
+      <div id="performance">
+      </div>
+      <p class="caption">
+       0 = lowest · 1 = highest · notebook reports rounded to two decimals
+      </p>
+     </article>
+     <article class="panel matrix-panel">
+      <div class="panel-title">
+       <h3>
+        Where predictions go
+       </h3>
+       <label class="small">
+        <input checked="" id="normalize" type="checkbox"/>
+        Row %
+       </label>
+      </div>
+      <div class="caption axis">
+       TRUE CLASS ↓   PREDICTED CLASS →
+      </div>
+      <div class="matrix-scroll">
+       <div id="matrix">
+       </div>
+      </div>
+      <div aria-live="polite" class="diagnostic" id="diagnostic">
+      </div>
+      <p class="caption" id="matrixSource">
+      </p>
+     </article>
+    </div>
+    <div class="insight">
+     <span class="insight-icon">
+      ↳
+     </span>
+     <div>
+      <h3>
+       The blind spot: Infiltration
+      </h3>
+      <p>
+       XGBoost assigns
+       <strong>
+        13,769 of 14,229
+       </strong>
+       validation Infiltration flows to Benign. Its Infiltration recall is just
+       <strong>
+        3.2%
+       </strong>
+       , despite 98.88% overall accuracy. Similar flow summaries are a plausible explanation, not a proven causal mechanism.
+      </p>
+     </div>
+    </div>
+    <div class="three-grid limitation-grid">
+     <article>
+      <h3>
+       Convergence is not a verdict
+      </h3>
+      <p>
+       The SGD baseline hit its iteration limit. This may reflect scaling, optimization settings or difficult data; it does not prove linear models cannot converge. Tune it before drawing a strong model-family conclusion.
+      </p>
+     </article>
+     <article>
+      <h3>
+       Rare classes disappear in the MLP
+      </h3>
+      <p>
+       This run has zero recall for Infiltration, Portscan and Webattack. Imbalance is a plausible factor; it is not proof that an MLP cannot learn them. Compare weighting or resampling on training folds and inspect learning curves.
+      </p>
+     </article>
+     <article>
+      <h3>
+       Ranking isn't a deployment threshold
+      </h3>
+      <p>
+       The reported test Infiltration ROC-AUC is about 0.921. Multiclass prediction uses the largest score, not a universal 0.5 threshold. Any class-specific alert threshold needs validation-based calibration and a false-positive budget.
+      </p>
+     </article>
+    </div>
+    <details>
+     <summary>
+      View original notebook figures and evidence
+     </summary>
+     <p>
+      These are the saved output images, not regenerated experiments. The matrix is validation data; ROC and PR figures use test data.
+     </p>
+     <div class="figure-grid">
+      <figure>
+       <img alt="Original XGBoost validation confusion matrix" loading="lazy" src="./assets/notebook-23-0.png"/>
+       <figcaption>
+        Validation confusion matrix
+       </figcaption>
+      </figure>
+      <figure>
+       <img alt="Original XGBoost feature importance plot" loading="lazy" src="./assets/notebook-23-1.png"/>
+       <figcaption>
+        Feature importance · model-specific, not causal
+       </figcaption>
+      </figure>
+      <figure>
+       <img alt="Original XGBoost test one-versus-rest ROC curves" loading="lazy" src="./assets/notebook-29-0.png"/>
+       <figcaption>
+        Test ROC curves
+       </figcaption>
+      </figure>
+      <figure>
+       <img alt="Original XGBoost test precision-recall curves" loading="lazy" src="./assets/notebook-31-1.png"/>
+       <figcaption>
+        Test precision-recall curves
+       </figcaption>
+      </figure>
+     </div>
+    </details>
+   </section>
+   <section class="section" id="inspector">
+    <div class="section-heading">
+     <div>
+      <div class="eyebrow">
+       INTERACTIVE LAB / FEATURE SENSITIVITY
+      </div>
+      <h2>
+       What changes when a flow changes?
+      </h2>
+      <p>
+       Move a feature. Observe how a simplified scoring rule responds.
+      </p>
+     </div>
+     <span class="pill amber">
+      Illustrative simulation
+     </span>
+    </div>
+    <div class="simulation-disclaimer">
+     This is an educational heuristic,
+     <strong>
+      not the trained XGBoost model
+     </strong>
+     . Scores are synthetic and uncalibrated; presets are invented examples. Contributions explain this toy rule, not the notebook model. Independent slider changes may produce physically inconsistent flows.
+    </div>
+    <div class="two-grid inspector-grid">
+     <article class="panel">
+      <div class="panel-title">
+       <h3>
+        Flow features
+       </h3>
+       <button class="text-button" id="reset">
+        Reset ↺
+       </button>
+      </div>
+      <div aria-label="Example flow presets" class="presets">
+       <button class="selected" data-preset="web">
+        Benign web
+       </button>
+       <button data-preset="flood">
+        DDoS flood
+       </button>
+       <button data-preset="scan">
+        Portscan
+       </button>
+      </div>
+      <div id="sliders">
+      </div>
+      <label class="threshold-label" for="threshold">
+       Review threshold
+       <output id="thresholdValue">
+       </output>
+      </label>
+      <input id="threshold" max="95" min="20" step="1" type="range" value="60"/>
+      <p class="caption">
+       If the highest toy score is below this threshold, request review. This changes the decision, not the distribution.
+      </p>
+     </article>
+     <article class="panel">
+      <div class="panel-title">
+       <h3>
+        Simulated class distribution
+       </h3>
+       <span class="pill">
+        Live
+       </span>
+      </div>
+      <div aria-live="polite" class="prediction" id="prediction">
+      </div>
+      <div id="probabilities">
+      </div>
+      <details open="">
+       <summary>
+        Why did the toy rule respond?
+       </summary>
+       <div id="contributions">
+       </div>
+       <p class="caption">
+        Additive score terms before softmax. A larger positive term favors the current leading class; these are not SHAP values.
+       </p>
+      </details>
+     </article>
+    </div>
+   </section>
+   <section class="section" id="reproduce">
+    <div class="section-heading">
+     <div>
+      <div class="eyebrow">
+       07 / REPRODUCIBILITY &amp; TECHNICAL INTEGRITY · 5 PTS
+      </div>
+      <h2>
+       Inspect the work. Rebuild the result.
+      </h2>
+     </div>
+     <a class="button primary" href="https://github.com/axylex/Multi-Class-Network-attack-classification" rel="noopener" target="_blank">
+      Source repository ↗
+     </a>
+    </div>
+    <div class="two-grid">
+     <article>
+      <h3>
+       Rebuild the analysis
+      </h3>
+      <ol class="steps">
+       <li>
+        Obtain the public CIC-IDS-Collection data under its terms. Record the precise release, download URL and SHA-256 hash.
+       </li>
+       <li>
+        Open
+        <a href="https://github.com/axylex/Multi-Class-Network-attack-classification/blob/b8401c1cbdad95366c2d76509542c526c0535d98/ML_Evaluation.ipynb">
+         ML_Evaluation.ipynb at the reviewed commit
+        </a>
+        . Install pandas, NumPy, scikit-learn, XGBoost, pyarrow, Matplotlib and seaborn.
+       </li>
+       <li>
+        Replace the Colab Drive path with your local parquet path. Run cleaning and splitting before writing the three clean checkpoints.
+       </li>
+       <li>
+        Train with seed 42. Use validation for model choice; freeze decisions before the final test evaluation. Export predictions and exact metrics.
+       </li>
+      </ol>
+      <a class="text-link" download="" href="./README.md">
+       Setup &amp; submission checklist ↓
+      </a>
+     </article>
+     <article class="panel">
+      <h3>
+       Remaining reproducibility gaps
+      </h3>
+      <ul class="checklist">
+       <li>
+        Dataset release, checksum and exact installed package versions:
+        <strong>
+         [INSERT VERIFIED VALUES]
+        </strong>
+       </li>
+       <li>
+        Duplicate and constant-column audit:
+        <strong>
+         [INSERT COUNTS]
+        </strong>
+       </li>
+       <li>
+        Final test classification report and numeric PR/ROC exports:
+        <strong>
+         [INSERT EXPORTS]
+        </strong>
+       </li>
+       <li>
+        Other model confusion matrices:
+        <strong>
+         [INSERT MATRICES]
+        </strong>
+       </li>
+       <li>
+        Host/time-aware evaluation, repeated seeds and uncertainty: future work.
+       </li>
+      </ul>
+      <p class="small">
+       This website transcribes saved outputs. It does not rerun training or imply the full pipeline was independently reproduced.
+      </p>
+     </article>
+    </div>
+    <div class="two-grid disclosure">
+     <article>
+      <h3>
+       AI-use disclosure
+      </h3>
+      <p>
+       AI assistance was used to build this website, transcribe and structure saved notebook results, and review the supplied methodological notes. The browser simulation is AI-authored illustrative code. Model training was not rerun for this website.
+      </p>
+      <p>
+       <strong>
+        [TEAM TO COMPLETE]
+       </strong>
+       Identify the AI tools used during the original analysis, what they contributed, and how their suggestions and code were checked. The original analysis's AI-use history is not established by the repository.
+      </p>
+     </article>
+     <article>
+      <h3>
+       Data privacy notice
+      </h3>
+      <p>
+       This static website contains aggregate metrics, saved plots, and synthetic flow examples. It contains no private flow records, packet payloads, credentials or API keys. The inspector runs locally in your browser and sends no feature values to a server.
+      </p>
+     </article>
+    </div>
+    <details id="references">
+     <summary>
+      Citations &amp; references
+     </summary>
+     <ol class="references">
+      <li>
+       D'hooge, L.
+       <a href="https://www.kaggle.com/dsv/4477547">
+        CIC-IDS-Collection
+       </a>
+       . Dataset catalog; confirm the precise version used.
+      </li>
+      <li>
+       Sharafaldin, I., Lashkari, A. H., &amp; Ghorbani, A. A. (2018). Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization. ICISSP.
+       <a href="https://www.unb.ca/cic/datasets/ids-2017.html">
+        CIC dataset documentation
+       </a>
+       .
+      </li>
+      <li>
+       Pedregosa, F., et al. (2011). Scikit-learn: Machine Learning in Python. JMLR 12, 2825–2830.
+       <a href="https://scikit-learn.org/stable/modules/sgd.html">
+        SGD documentation
+       </a>
+       ·
+       <a href="https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.RobustScaler.html">
+        RobustScaler
+       </a>
+       .
+      </li>
+      <li>
+       Chen, T., &amp; Guestrin, C. (2016). XGBoost: A Scalable Tree Boosting System. KDD.
+       <a href="https://doi.org/10.1145/2939672.2939785">
+        doi:10.1145/2939672.2939785
+       </a>
+       .
+      </li>
+      <li>
+       Harris, C. R., et al. (2020). Array programming with NumPy. Nature 585, 357–362.
+       <a href="https://doi.org/10.1038/s41586-020-2649-2">
+        DOI
+       </a>
+       . McKinney, W. (2010). Data Structures for Statistical Computing in Python. SciPy.
+       <a href="https://doi.org/10.25080/Majora-92bf1922-00a">
+        DOI
+       </a>
+       .
+      </li>
+      <li>
+       Hunter, J. D. (2007). Matplotlib: A 2D Graphics Environment. Computing in Science &amp; Engineering 9(3), 90–95.
+       <a href="https://doi.org/10.1109/MCSE.2007.55">
+        DOI
+       </a>
+       . Waskom, M. (2021). seaborn: statistical data visualization. JOSS 6(60), 3021.
+       <a href="https://doi.org/10.21105/joss.03021">
+        DOI
+       </a>
+       .
+      </li>
+      <li>
+       <a href="https://arrow.apache.org/docs/python/">
+        Apache Arrow / PyArrow documentation
+       </a>
+       ;
+       <a href="https://github.com/ahlashkari/CICFlowMeter">
+        CICFlowMeter
+       </a>
+       , flow-feature extraction. Record versions and any additional external code used in the analysis.
+      </li>
+      <li>
+       Project notebook: Adusumilli Viraat Krishna and Omer Mohammed Mubeenuddin,
+       <a href="https://github.com/axylex/Multi-Class-Network-attack-classification/tree/b8401c1cbdad95366c2d76509542c526c0535d98">
+        repository snapshot b8401c1
+       </a>
+       . Numeric tables reproduced from saved validation outputs; XGBoost matrix transcribed from its saved plot.
+      </li>
+     </ol>
+    </details>
+   </section>
+  </main>
+  <footer>
+   ES 335
+   <p>
+    Machine Learning Course Project
+    <br/>
+    Adusumilli Viraat Krishna · Omer Mohammed Mubeenuddin
+   </p>
+   <a href="#overview">
+    Back to top ↑
+   </a>
+  </footer>
+  <noscript>
+   <p class="note">
+    Enable JavaScript for the interactive explorers. The report and original notebook figures remain available without it.
+   </p>
+  </noscript>
+ </body>
+</html>
+
