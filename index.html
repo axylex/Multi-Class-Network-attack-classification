@@ -10,6 +10,10 @@
   <link href="./styles.css" rel="stylesheet"/>
   <script defer="" src="./data/results.js">
   </script>
+  <script defer="" src="./data/models.js">
+  </script>
+  <script defer="" src="./browser-inference.js">
+  </script>
   <script defer="" src="./app.js">
   </script>
  </head>
@@ -187,7 +191,7 @@
      </svg>
      <div class="graphic-bottom">
       <span>
-       57 flow features
+       53 model features
       </span>
       <span>
        No packet payloads
@@ -201,7 +205,7 @@
       9.17M
      </strong>
      <span>
-      flows in loaded dataset
+      flows after deduplication
      </span>
     </div>
     <div>
@@ -225,7 +229,7 @@
     </div>
     <div>
      <strong>
-      0.8528
+      0.8503
      </strong>
      <span>
       XGBoost validation macro-F1
@@ -236,7 +240,7 @@
     <div class="section-heading">
      <div>
       <div class="eyebrow">
-       01 / PROBLEM FORMULATION · 10 PTS
+       01 / PROBLEM FORMULATION
       </div>
       <h2>
        One flow. Eight possible labels.
@@ -281,7 +285,7 @@
     <div class="section-heading">
      <div>
       <div class="eyebrow">
-       02 / DATA UNDERSTANDING · 10 PTS
+       02 / DATA UNDERSTANDING
       </div>
       <h2>
        A large dataset. An uneven playing field.
@@ -313,10 +317,10 @@
        <code>
         ClassLabel
        </code>
-       leaves 57 numeric predictors.
+       leaves 57 candidate predictors. The audit retained 53 for modeling.
       </p>
       <p>
-       The CIC-IDS-Collection catalog combines CIC-IDS2017, CIC-DoS2017, CSE-CIC-IDS2018 and CIC-DDoS2019 with harmonized labels and feature cleanup. The notebook's local file has no recorded download version or hash, so its exact provenance still needs confirmation.
+       The CIC-IDS-Collection catalog combines CIC-IDS2017, CIC-DoS2017, CSE-CIC-IDS2018 and CIC-DDoS2019 with harmonized labels and feature cleanup. The results JSON records the local parquet checksum.
       </p>
       <div class="note">
        A majority-only classifier already reaches
@@ -325,7 +329,7 @@
        validation accuracy. That makes per-class recall and macro-F1 essential.
       </div>
       <p class="small">
-       Source: saved notebook output, before any additional duplicate audit. Public benchmark access may require a Kaggle account and acceptance of dataset terms.
+       The class distribution shows flows retained after the duplicate audit.
       </p>
      </article>
      <article class="panel">
@@ -341,7 +345,7 @@
       <div id="distribution">
       </div>
       <div class="caption">
-       Full loaded dataset · counts shown on every bar
+       Audited dataset · count per class
       </div>
      </article>
     </div>
@@ -350,14 +354,14 @@
     <div class="section-heading">
      <div>
       <div class="eyebrow">
-       03 / PREPROCESSING &amp; STATISTICAL REASONING · 10 PTS
+       03 / PREPROCESSING &amp; STATISTICAL REASONING
       </div>
       <h2>
        Clean the data. Protect the evaluation.
       </h2>
      </div>
      <span class="pill">
-      Notes reconciled with notebook
+      Audited local run
      </span>
     </div>
     <div class="method-grid">
@@ -390,7 +394,7 @@
        Handle invalid values
       </h3>
       <p>
-       Replace ±∞ with NaN, then drop incomplete rows. Zero-duration rate calculations can generate invalid values. The recorded cleaning output removes no rows.
+       Replace ±∞ with NaN and drop incomplete rows. The audit removed 0 rows at this step.
       </p>
       <span class="status">
        ✓ In notebook
@@ -404,10 +408,10 @@
        Audit duplicates first
       </h3>
       <p>
-       Check repeated column names and identical feature columns (such as duplicate header-length fields) before duplicate rows. Group identical flow features across splits; investigate conflicting labels.
+       The audit found 0 repeated column names and removed 4 identical feature columns. Before splitting, it removed 310 redundant same-label rows and 14 rows with conflicting labels.
       </p>
-      <span class="status pending">
-       ○ Recommended · not recorded
+      <span class="status">
+       ✓ Audited in notebook
       </span>
      </article>
      <article class="method">
@@ -418,10 +422,10 @@
        Filter constant features
       </h3>
       <p>
-       Fit a zero-variance filter on training data only and reuse its column mask. Features such as Bwd PSH Flags can be constant in some datasets; verify this file rather than assuming.
+       The filter found 0 constant features in the training sample. The same 53 retained features are used in validation and test.
       </p>
-      <span class="status pending">
-       ○ Recommended · not recorded
+      <span class="status">
+       ✓ Audited in notebook
       </span>
      </article>
      <article class="method">
@@ -446,7 +450,7 @@
        Work within memory limits
       </h3>
       <p>
-       A stratified 20% sample of the training split leaves 1,283,462 rows. This approximates class proportions, not guaranteed convergence. The notebook downcasts to float16/32; its cast warnings warrant a precision audit.
+       The stratified 20% training sample contains 1,283,416 rows. The pipeline keeps the parquet feature precision through the audit and split.
       </p>
       <span class="status">
        ✓ Subsampling recorded
@@ -455,18 +459,45 @@
     </div>
     <details>
      <summary>
-      Why duplicate handling matters
+      View the duplicate and feature audit
      </summary>
-     <p>
-      Network polling may produce repeated records, but identical feature vectors are not automatically the same event. Define and document a duplicate policy, remove redundant columns first, then count exact rows and conflicting-label feature groups. Preserve event IDs where available, and keep related flows in one split. Report before/after class counts. The current notebook shows neither duplicate removal nor a group-aware split; its reported scores should be read with that limitation.
-     </p>
+     <p>These four column pairs had identical values across all 9,167,581 input rows. The audit kept one column from each pair.</p>
+     <div class="table-scroll">
+      <table>
+       <caption>Duplicate feature columns</caption>
+       <thead><tr><th scope="col">Removed column</th><th scope="col">Retained column</th></tr></thead>
+       <tbody>
+        <tr><td>Avg Fwd Segment Size</td><td>Fwd Packet Length Mean</td></tr>
+        <tr><td>Avg Bwd Segment Size</td><td>Bwd Packet Length Mean</td></tr>
+        <tr><td>Subflow Fwd Packets</td><td>Total Fwd Packets</td></tr>
+        <tr><td>Subflow Bwd Packets</td><td>Total Backward Packets</td></tr>
+       </tbody>
+      </table>
+     </div>
+     <p>Constant features in the dataset: none. Constant features removed using the training sample: none.</p>
+     <p>The audit kept one row per feature vector with a single label and excluded all rows in 7 conflicting-label groups. It retained 9,167,257 of 9,167,581 input rows before splitting.</p>
+     <div class="table-scroll">
+      <table>
+       <thead><tr><th scope="col">Class</th><th scope="col">Input rows</th><th scope="col">Retained rows</th></tr></thead>
+       <tbody>
+        <tr><th scope="row">Benign</th><td>7,186,189</td><td>7,185,875</td></tr>
+        <tr><th scope="row">Botnet</th><td>145,968</td><td>145,968</td></tr>
+        <tr><th scope="row">Bruteforce</th><td>103,244</td><td>103,244</td></tr>
+        <tr><th scope="row">DDoS</th><td>1,234,729</td><td>1,234,723</td></tr>
+        <tr><th scope="row">DoS</th><td>397,344</td><td>397,343</td></tr>
+        <tr><th scope="row">Infiltration</th><td>94,857</td><td>94,854</td></tr>
+        <tr><th scope="row">Portscan</th><td>2,255</td><td>2,255</td></tr>
+        <tr><th scope="row">Webattack</th><td>2,995</td><td>2,995</td></tr>
+       </tbody>
+      </table>
+     </div>
     </details>
    </section>
    <section class="section" id="models">
     <div class="section-heading">
      <div>
       <div class="eyebrow">
-       04 / BASELINES &amp; METHOD SELECTION · 15 PTS
+       04 / BASELINES &amp; METHOD SELECTION
       </div>
       <h2>
        Different assumptions. Different errors.
@@ -559,14 +590,14 @@
      </table>
     </div>
     <p class="small">
-     The baseline is SGDClassifier(loss='log_loss'), not a fitted multinomial LogisticRegression estimator. Only the SGD baseline and Random Forest explicitly use balanced class weights in this notebook; the XGBoost fit has no sample weights.
+     **Implementation note:** The linear baseline uses `SGDClassifier(loss='log_loss')`. Class weighting is applied to the SGD and Random Forest models, while XGBoost is trained without explicit sample weighting.
     </p>
    </section>
    <section class="section" id="evaluation">
     <div class="section-heading">
      <div>
       <div class="eyebrow">
-       05 / EVALUATION DESIGN · 20 PTS
+       05 / EVALUATION DESIGN
       </div>
       <h2>
        Keep model selection away from the test set.
@@ -577,19 +608,19 @@
      <div>
       70% TRAIN
       <span>
-       6,417,306 flows
+       6,417,079 flows
       </span>
      </div>
      <div>
       15% VALIDATION
       <span>
-       1,375,137 flows
+       1,375,089 flows
       </span>
      </div>
      <div>
       15% TEST
       <span>
-       1,375,138 flows
+       1,375,089 flows
       </span>
      </div>
     </div>
@@ -599,7 +630,7 @@
        Stratified, seed 42
       </h3>
       <p>
-       Two random splits preserve approximate class proportions. The training partition is then subsampled to 20%; validation and test remain intact. This is not a host- or time-disjoint evaluation.
+       Exact duplicates and conflicting-label vectors are handled before the stratified split. Models train on a 20% sample of the training partition. The split is random at the flow level.
       </p>
      </article>
      <article>
@@ -615,7 +646,7 @@
        Selection vs. final evaluation
       </h3>
       <p>
-       Model comparisons below use validation results. The notebook later loads the test set for XGBoost ROC and PR curves. No systematic search log, test classification report, or repeated-run confidence intervals are recorded.
+       Model comparisons use validation results. See the <a href="#test-results">held-out test reports and ROC and precision–recall curves</a> for the remaining models and majority baseline. The existing XGBoost test curves use the same split.
       </p>
      </article>
     </div>
@@ -624,13 +655,13 @@
     <div class="section-heading">
      <div>
       <div class="eyebrow">
-       06 / RESULTS, ERRORS &amp; LIMITATIONS · 10 PTS
+       06 / RESULTS, ERRORS &amp; LIMITATIONS
       </div>
       <h2>
        High accuracy isn't the whole story.
       </h2>
       <p>
-       Inspect each class. Follow the mistakes.
+       Compare validation confusion matrices for all five trained models and the majority baseline. Switch between row percentages and flow counts.
       </p>
      </div>
      <a class="text-link" download="" href="./data/results.json">
@@ -643,7 +674,7 @@
       </span>
       MODEL EXPLORER
       <span class="muted">
-       / Validation set
+       / Audited validation split
       </span>
      </div>
      <label>
@@ -677,13 +708,13 @@
       <div id="performance">
       </div>
       <p class="caption">
-       0 = lowest · 1 = highest · notebook reports rounded to two decimals
+       Scores are shown on a 0–1 scale and displayed to two decimal places.
       </p>
      </article>
      <article class="panel matrix-panel">
       <div class="panel-title">
        <h3>
-        Where predictions go
+        Confusion matrix
        </h3>
        <label class="small">
         <input checked="" id="normalize" type="checkbox"/>
@@ -709,36 +740,27 @@
      </span>
      <div>
       <h3>
-       The blind spot: Infiltration
+       XGBoost Infiltration errors
       </h3>
-      <p>
-       XGBoost assigns
-       <strong>
-        13,769 of 14,229
-       </strong>
-       validation Infiltration flows to Benign. Its Infiltration recall is just
-       <strong>
-        3.2%
-       </strong>
-       , despite 98.88% overall accuracy. Similar flow summaries are a plausible explanation, not a proven causal mechanism.
+      <p id="infiltrationInsight">
       </p>
      </div>
     </div>
     <div class="three-grid limitation-grid">
      <article>
       <h3>
-       Convergence is not a verdict
+       Class weighting in the SGD baseline
       </h3>
       <p>
-       The SGD baseline hit its iteration limit. This may reflect scaling, optimization settings or difficult data; it does not prove linear models cannot converge. Tune it before drawing a strong model-family conclusion.
+       The class-weighted SGD baseline reached its iteration limit. Its confusion matrix shows the resulting trade-off between detection and false alerts.
       </p>
      </article>
      <article>
       <h3>
-       Rare classes disappear in the MLP
+       Rare-class recall varies in the MLP
       </h3>
       <p>
-       This run has zero recall for Infiltration, Portscan and Webattack. Imbalance is a plausible factor; it is not proof that an MLP cannot learn them. Compare weighting or resampling on training folds and inspect learning curves.
+       On audited validation data, MLP recall was 22.00% for Webattack, 0.01% for Infiltration, and 0.30% for Portscan.
       </p>
      </article>
      <article>
@@ -746,38 +768,173 @@
        Ranking isn't a deployment threshold
       </h3>
       <p>
-       The reported test Infiltration ROC-AUC is about 0.921. Multiclass prediction uses the largest score, not a universal 0.5 threshold. Any class-specific alert threshold needs validation-based calibration and a false-positive budget.
+       The test ROC and precision–recall curves show how each model ranks flows for each class. Validation confusion matrices summarize the final predicted class for each validation flow.
       </p>
      </article>
     </div>
+    <section class="panel test-results" id="test-results" aria-labelledby="test-results-title">
+     <div class="panel-title">
+      <h3 id="test-results-title">Held-out test results</h3>
+      <a class="text-link" download="" href="./data/test-results.json">Download test metrics ↓</a>
+     </div>
+     <p>Reports and one-vs-rest curves use 1,375,089 audited test flows. Open a model to see per-class results and curves. The XGBoost test curves are in the notebook figures below.</p>
+     <p class="small">SGD curves use class decision scores because probability normalization underflows for some flows. The other models use class probabilities.</p>
+      <div class="table-scroll">
+       <table>
+        <thead><tr><th scope="col">Model</th><th scope="col">Accuracy</th><th scope="col">Macro-F1</th><th scope="col">Macro ROC-AUC</th><th scope="col">Macro avg. precision</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Majority baseline</th><td>78.39%</td><td>0.1099</td><td>0.5000</td><td>0.1250</td></tr>
+          <tr><th scope="row">Linear baseline (SGD)</th><td>29.66%</td><td>0.0863</td><td>0.6232</td><td>0.2089</td></tr>
+          <tr><th scope="row">Random Forest</th><td>78.20%</td><td>0.7650</td><td>0.9861</td><td>0.8600</td></tr>
+          <tr><th scope="row">Histogram Gradient Boosting</th><td>98.68%</td><td>0.7317</td><td>0.9319</td><td>0.7029</td></tr>
+          <tr><th scope="row">MLP (128 / 64 / 32)</th><td>92.64%</td><td>0.6075</td><td>0.8453</td><td>0.6165</td></tr>
+        </tbody>
+       </table>
+      </div>
+     <details>
+      <summary>Majority baseline test report and curves</summary>
+      <div class="table-scroll">
+       <table>
+        <thead><tr><th scope="col">Class</th><th scope="col">Precision</th><th scope="col">Recall</th><th scope="col">F1</th><th scope="col">Test flows</th><th scope="col">ROC-AUC</th><th scope="col">Average precision</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Benign</th><td>0.7839</td><td>1.0000</td><td>0.8788</td><td>1,077,882</td><td>0.5000</td><td>0.7839</td></tr>
+          <tr><th scope="row">Botnet</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>21,895</td><td>0.5000</td><td>0.0159</td></tr>
+          <tr><th scope="row">Bruteforce</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>15,486</td><td>0.5000</td><td>0.0113</td></tr>
+          <tr><th scope="row">DDoS</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>185,208</td><td>0.5000</td><td>0.1347</td></tr>
+          <tr><th scope="row">DoS</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>59,602</td><td>0.5000</td><td>0.0433</td></tr>
+          <tr><th scope="row">Infiltration</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>14,228</td><td>0.5000</td><td>0.0103</td></tr>
+          <tr><th scope="row">Portscan</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>339</td><td>0.5000</td><td>0.0002</td></tr>
+          <tr><th scope="row">Webattack</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>449</td><td>0.5000</td><td>0.0003</td></tr>
+          <tr><th scope="row">macro avg</th><td>0.0980</td><td>0.1250</td><td>0.1099</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+          <tr><th scope="row">weighted avg</th><td>0.6144</td><td>0.7839</td><td>0.6889</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+        </tbody>
+       </table>
+      </div>
+      <figure class="test-curves">
+       <img alt="Majority baseline one-vs-rest ROC and precision–recall curves on the held-out test set" loading="lazy" src="./assets/test-majority.png"/>
+      </figure>
+     </details>
+     <details>
+      <summary>Linear baseline (SGD) test report and curves</summary>
+      <div class="table-scroll">
+       <table>
+        <thead><tr><th scope="col">Class</th><th scope="col">Precision</th><th scope="col">Recall</th><th scope="col">F1</th><th scope="col">Test flows</th><th scope="col">ROC-AUC</th><th scope="col">Average precision</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Benign</th><td>0.7729</td><td>0.3524</td><td>0.4841</td><td>1,077,882</td><td>0.5682</td><td>0.7980</td></tr>
+          <tr><th scope="row">Botnet</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>21,895</td><td>0.8214</td><td>0.0422</td></tr>
+          <tr><th scope="row">Bruteforce</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>15,486</td><td>0.9958</td><td>0.5756</td></tr>
+          <tr><th scope="row">DDoS</th><td>0.2150</td><td>0.1469</td><td>0.1745</td><td>185,208</td><td>0.6199</td><td>0.2144</td></tr>
+          <tr><th scope="row">DoS</th><td>0.0019</td><td>0.0021</td><td>0.0020</td><td>59,602</td><td>0.2801</td><td>0.0293</td></tr>
+          <tr><th scope="row">Infiltration</th><td>0.0186</td><td>0.0402</td><td>0.0255</td><td>14,228</td><td>0.4609</td><td>0.0106</td></tr>
+          <tr><th scope="row">Portscan</th><td>0.0001</td><td>0.1032</td><td>0.0001</td><td>339</td><td>0.4287</td><td>0.0002</td></tr>
+          <tr><th scope="row">Webattack</th><td>0.0023</td><td>0.1960</td><td>0.0045</td><td>449</td><td>0.8103</td><td>0.0011</td></tr>
+          <tr><th scope="row">macro avg</th><td>0.1264</td><td>0.1051</td><td>0.0863</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+          <tr><th scope="row">weighted avg</th><td>0.6351</td><td>0.2966</td><td>0.4033</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+        </tbody>
+       </table>
+      </div>
+      <figure class="test-curves">
+       <img alt="Linear baseline (SGD) one-vs-rest ROC and precision–recall curves on the held-out test set" loading="lazy" src="./assets/test-sgd.png"/>
+      </figure>
+     </details>
+     <details>
+      <summary>Random Forest test report and curves</summary>
+      <div class="table-scroll">
+       <table>
+        <thead><tr><th scope="col">Class</th><th scope="col">Precision</th><th scope="col">Recall</th><th scope="col">F1</th><th scope="col">Test flows</th><th scope="col">ROC-AUC</th><th scope="col">Average precision</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Benign</th><td>0.9974</td><td>0.7241</td><td>0.8391</td><td>1,077,882</td><td>0.9935</td><td>0.9979</td></tr>
+          <tr><th scope="row">Botnet</th><td>0.9644</td><td>0.9973</td><td>0.9806</td><td>21,895</td><td>1.0000</td><td>0.9996</td></tr>
+          <tr><th scope="row">Bruteforce</th><td>0.9991</td><td>0.9962</td><td>0.9976</td><td>15,486</td><td>1.0000</td><td>0.9997</td></tr>
+          <tr><th scope="row">DDoS</th><td>0.9883</td><td>0.9980</td><td>0.9931</td><td>185,208</td><td>1.0000</td><td>0.9998</td></tr>
+          <tr><th scope="row">DoS</th><td>0.9649</td><td>0.9974</td><td>0.9809</td><td>59,602</td><td>0.9999</td><td>0.9994</td></tr>
+          <tr><th scope="row">Infiltration</th><td>0.0413</td><td>0.8822</td><td>0.0789</td><td>14,228</td><td>0.9057</td><td>0.1286</td></tr>
+          <tr><th scope="row">Portscan</th><td>0.8287</td><td>0.8702</td><td>0.8489</td><td>339</td><td>0.9924</td><td>0.9097</td></tr>
+          <tr><th scope="row">Webattack</th><td>0.2601</td><td>0.8731</td><td>0.4008</td><td>449</td><td>0.9976</td><td>0.8453</td></tr>
+          <tr><th scope="row">macro avg</th><td>0.7555</td><td>0.9173</td><td>0.7650</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+          <tr><th scope="row">weighted avg</th><td>0.9841</td><td>0.7820</td><td>0.8620</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+        </tbody>
+       </table>
+      </div>
+      <figure class="test-curves">
+       <img alt="Random Forest one-vs-rest ROC and precision–recall curves on the held-out test set" loading="lazy" src="./assets/test-rf.png"/>
+      </figure>
+     </details>
+     <details>
+      <summary>Histogram Gradient Boosting test report and curves</summary>
+      <div class="table-scroll">
+       <table>
+        <thead><tr><th scope="col">Class</th><th scope="col">Precision</th><th scope="col">Recall</th><th scope="col">F1</th><th scope="col">Test flows</th><th scope="col">ROC-AUC</th><th scope="col">Average precision</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Benign</th><td>0.9855</td><td>0.9983</td><td>0.9919</td><td>1,077,882</td><td>0.9921</td><td>0.9975</td></tr>
+          <tr><th scope="row">Botnet</th><td>0.9971</td><td>0.9892</td><td>0.9931</td><td>21,895</td><td>0.9994</td><td>0.9968</td></tr>
+          <tr><th scope="row">Bruteforce</th><td>0.9969</td><td>0.9974</td><td>0.9972</td><td>15,486</td><td>0.9994</td><td>0.9946</td></tr>
+          <tr><th scope="row">DDoS</th><td>0.9992</td><td>0.9956</td><td>0.9974</td><td>185,208</td><td>0.9997</td><td>0.9994</td></tr>
+          <tr><th scope="row">DoS</th><td>0.9945</td><td>0.9828</td><td>0.9886</td><td>59,602</td><td>0.9949</td><td>0.9941</td></tr>
+          <tr><th scope="row">Infiltration</th><td>0.4378</td><td>0.0233</td><td>0.0442</td><td>14,228</td><td>0.9025</td><td>0.1247</td></tr>
+          <tr><th scope="row">Portscan</th><td>0.1677</td><td>0.5516</td><td>0.2572</td><td>339</td><td>0.6411</td><td>0.0958</td></tr>
+          <tr><th scope="row">Webattack</th><td>0.4793</td><td>0.7483</td><td>0.5843</td><td>449</td><td>0.9262</td><td>0.4200</td></tr>
+          <tr><th scope="row">macro avg</th><td>0.7573</td><td>0.7858</td><td>0.7317</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+          <tr><th scope="row">weighted avg</th><td>0.9820</td><td>0.9868</td><td>0.9824</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+        </tbody>
+       </table>
+      </div>
+      <figure class="test-curves">
+       <img alt="Histogram Gradient Boosting one-vs-rest ROC and precision–recall curves on the held-out test set" loading="lazy" src="./assets/test-hgb.png"/>
+      </figure>
+     </details>
+     <details>
+      <summary>MLP (128 / 64 / 32) test report and curves</summary>
+      <div class="table-scroll">
+       <table>
+        <thead><tr><th scope="col">Class</th><th scope="col">Precision</th><th scope="col">Recall</th><th scope="col">F1</th><th scope="col">Test flows</th><th scope="col">ROC-AUC</th><th scope="col">Average precision</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Benign</th><td>0.9344</td><td>0.9804</td><td>0.9569</td><td>1,077,882</td><td>0.8066</td><td>0.8790</td></tr>
+          <tr><th scope="row">Botnet</th><td>0.9894</td><td>0.9746</td><td>0.9819</td><td>21,895</td><td>0.9951</td><td>0.9884</td></tr>
+          <tr><th scope="row">Bruteforce</th><td>0.9960</td><td>0.9910</td><td>0.9935</td><td>15,486</td><td>0.9991</td><td>0.9951</td></tr>
+          <tr><th scope="row">DDoS</th><td>0.9655</td><td>0.7016</td><td>0.8127</td><td>185,208</td><td>0.7509</td><td>0.7062</td></tr>
+          <tr><th scope="row">DoS</th><td>0.6947</td><td>0.8444</td><td>0.7623</td><td>59,602</td><td>0.9002</td><td>0.5483</td></tr>
+          <tr><th scope="row">Infiltration</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>14,228</td><td>0.6028</td><td>0.0181</td></tr>
+          <tr><th scope="row">Portscan</th><td>0.0000</td><td>0.0000</td><td>0.0000</td><td>339</td><td>0.8074</td><td>0.1443</td></tr>
+          <tr><th scope="row">Webattack</th><td>0.9159</td><td>0.2183</td><td>0.3525</td><td>449</td><td>0.9004</td><td>0.6529</td></tr>
+          <tr><th scope="row">macro avg</th><td>0.6870</td><td>0.5888</td><td>0.6075</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+          <tr><th scope="row">weighted avg</th><td>0.9199</td><td>0.9264</td><td>0.9195</td><td>1,375,089</td><td>—</td><td>—</td></tr>
+        </tbody>
+       </table>
+      </div>
+      <figure class="test-curves">
+       <img alt="MLP (128 / 64 / 32) one-vs-rest ROC and precision–recall curves on the held-out test set" loading="lazy" src="./assets/test-mlp.png"/>
+      </figure>
+     </details>
+    </section>
     <details>
      <summary>
-      View original notebook figures and evidence
+      View XGBoost notebook figures
      </summary>
      <p>
-      These are the saved output images, not regenerated experiments. The matrix is validation data; ROC and PR figures use test data.
+      These figures come from the audited notebook run. The confusion matrix uses validation flows. The ROC and precision–recall curves use test flows.
      </p>
      <div class="figure-grid">
       <figure>
-       <img alt="Original XGBoost validation confusion matrix" loading="lazy" src="./assets/notebook-23-0.png"/>
+       <img alt="XGBoost validation confusion matrix" loading="lazy" src="./assets/notebook-23-0.png"/>
        <figcaption>
         Validation confusion matrix
        </figcaption>
       </figure>
       <figure>
-       <img alt="Original XGBoost feature importance plot" loading="lazy" src="./assets/notebook-23-1.png"/>
+       <img alt="XGBoost feature importance plot" loading="lazy" src="./assets/notebook-23-1.png"/>
        <figcaption>
         Feature importance · model-specific, not causal
        </figcaption>
       </figure>
       <figure>
-       <img alt="Original XGBoost test one-versus-rest ROC curves" loading="lazy" src="./assets/notebook-29-0.png"/>
+       <img alt="XGBoost test one-versus-rest ROC curves" loading="lazy" src="./assets/notebook-29-0.png"/>
        <figcaption>
         Test ROC curves
        </figcaption>
       </figure>
       <figure>
-       <img alt="Original XGBoost test precision-recall curves" loading="lazy" src="./assets/notebook-31-1.png"/>
+       <img alt="XGBoost test precision-recall curves" loading="lazy" src="./assets/notebook-31-1.png"/>
        <figcaption>
         Test precision-recall curves
        </figcaption>
@@ -789,82 +946,38 @@
     <div class="section-heading">
      <div>
       <div class="eyebrow">
-       INTERACTIVE LAB / FEATURE SENSITIVITY
+       INTERACTIVE LAB / HELD-OUT FLOWS
       </div>
       <h2>
-       What changes when a flow changes?
+       How does each model classify a flow?
       </h2>
       <p>
-       Move a feature. Observe how a simplified scoring rule responds.
+       Choose a test example and a trained model, then click Predict to run it in your browser.
       </p>
      </div>
-     <span class="pill amber">
-      Illustrative simulation
-     </span>
-    </div>
-    <div class="simulation-disclaimer">
-     This is an educational heuristic,
-     <strong>
-      not the trained XGBoost model
-     </strong>
-     . Scores are synthetic and uncalibrated; presets are invented examples. Contributions explain this toy rule, not the notebook model. Independent slider changes may produce physically inconsistent flows.
     </div>
     <div class="two-grid inspector-grid">
      <article class="panel">
-      <div class="panel-title">
-       <h3>
-        Flow features
-       </h3>
-       <button class="text-button" id="reset">
-        Reset ↺
-       </button>
-      </div>
-      <div aria-label="Example flow presets" class="presets">
-       <button class="selected" data-preset="web">
-        Benign web
-       </button>
-       <button data-preset="flood">
-        DDoS flood
-       </button>
-       <button data-preset="scan">
-        Portscan
-       </button>
-      </div>
-      <div id="sliders">
-      </div>
-      <label class="threshold-label" for="threshold">
-       Review threshold
-       <output id="thresholdValue">
-       </output>
+      <fieldset class="flow-choices">
+       <legend>Example by true class</legend>
+       <div class="flow-options" id="flowChoices"></div>
+      </fieldset>
+      <label class="flow-model" for="flowModel">
+       Model
+       <select id="flowModel"></select>
       </label>
-      <input id="threshold" max="95" min="20" step="1" type="range" value="60"/>
-      <p class="caption">
-       If the highest toy score is below this threshold, request review. This changes the decision, not the distribution.
-      </p>
+      <button type="button" class="button primary flow-run" id="flowRun">Predict</button>
+      <h3>Selected flow measurements</h3>
+      <dl class="flow-features" id="flowFeatures"></dl>
      </article>
      <article class="panel">
-      <div class="panel-title">
-       <h3>
-        Simulated class distribution
-       </h3>
-       <span class="pill">
-        Live
-       </span>
+      <h3>Model prediction</h3>
+      <div class="flow-result" id="flowPrediction" aria-live="polite" aria-atomic="true"></div>
+      <div id="flowScoreResults" hidden>
+       <h3>Scores for all classes</h3>
+       <div class="flow-scores" id="flowScores"></div>
       </div>
-      <div aria-live="polite" class="prediction" id="prediction">
-      </div>
-      <div id="probabilities">
-      </div>
-      <details open="">
-       <summary>
-        Why did the toy rule respond?
-       </summary>
-       <div id="contributions">
-       </div>
-       <p class="caption">
-        Additive score terms before softmax. A larger positive term favors the current leading class; these are not SHAP values.
-       </p>
-      </details>
+      <p class="caption">Each prediction uses all 53 flow features. Confidence shows the model’s uncalibrated class score.</p>
      </article>
     </div>
    </section>
@@ -872,7 +985,7 @@
     <div class="section-heading">
      <div>
       <div class="eyebrow">
-       07 / REPRODUCIBILITY &amp; TECHNICAL INTEGRITY · 5 PTS
+       07 / REPRODUCIBILITY &amp; TECHNICAL INTEGRITY
       </div>
       <h2>
        Inspect the work. Rebuild the result.
@@ -893,13 +1006,13 @@
        </li>
        <li>
         Open
-        <a href="https://github.com/axylex/Multi-Class-Network-attack-classification/blob/b8401c1cbdad95366c2d76509542c526c0535d98/ML_Evaluation.ipynb">
-         ML_Evaluation.ipynb at the reviewed commit
+        <a download="" href="./ML_Evaluation.ipynb">
+         the audited notebook
         </a>
         . Install pandas, NumPy, scikit-learn, XGBoost, pyarrow, Matplotlib and seaborn.
        </li>
        <li>
-        Replace the Colab Drive path with your local parquet path. Run cleaning and splitting before writing the three clean checkpoints.
+        Set dataset_path to your local parquet file. Run the duplicate audit, split and training-only feature filter before writing the three audited checkpoints.
        </li>
        <li>
         Train with seed 42. Use validation for model choice; freeze decisions before the final test evaluation. Export predictions and exact metrics.
@@ -915,35 +1028,14 @@
       </h3>
       <ul class="checklist">
        <li>
-        Dataset release, checksum and exact installed package versions:
-        <strong>
-         [INSERT VERIFIED VALUES]
-        </strong>
-       </li>
-       <li>
-        Duplicate and constant-column audit:
-        <strong>
-         [INSERT COUNTS]
-        </strong>
-       </li>
-       <li>
-        Final test classification report and numeric PR/ROC exports:
-        <strong>
-         [INSERT EXPORTS]
-        </strong>
-       </li>
-       <li>
-        Other model confusion matrices:
-        <strong>
-         [INSERT MATRICES]
-        </strong>
+        Confirm the exact release used in the original notebook. The local dataset checksum and software versions are recorded in the results JSON.
        </li>
        <li>
         Host/time-aware evaluation, repeated seeds and uncertainty: future work.
        </li>
       </ul>
       <p class="small">
-       This website transcribes saved outputs. It does not rerun training or imply the full pipeline was independently reproduced.
+       The notebook and website show the audited validation matrices and held-out test evaluation.
       </p>
      </article>
     </div>
@@ -953,21 +1045,13 @@
        AI-use disclosure
       </h3>
       <p>
-       AI assistance was used to build this website, transcribe and structure saved notebook results, and review the supplied methodological notes. The browser simulation is AI-authored illustrative code. Model training was not rerun for this website.
+       AI assistance was used to build this website, review the supplied methodological notes, rerun the notebook models locally, and add their validation confusion matrices.
       </p>
       <p>
-       <strong>
-        [TEAM TO COMPLETE]
-       </strong>
-       Identify the AI tools used during the original analysis, what they contributed, and how their suggestions and code were checked. The original analysis's AI-use history is not established by the repository.
+       ChatGPT also helped export the trained models and implement inference for the interactive flow inspector.
       </p>
-     </article>
-     <article>
-      <h3>
-       Data privacy notice
-      </h3>
       <p>
-       This static website contains aggregate metrics, saved plots, and synthetic flow examples. It contains no private flow records, packet payloads, credentials or API keys. The inspector runs locally in your browser and sends no feature values to a server.
+       This static website contains aggregate metrics, saved plots, model parameters, and features from eight public benchmark flows. The inspector evaluates the models locally in your browser.
       </p>
      </article>
     </div>
@@ -981,7 +1065,7 @@
        <a href="https://www.kaggle.com/dsv/4477547">
         CIC-IDS-Collection
        </a>
-       . Dataset catalog; confirm the precise version used.
+       . Dataset catalog; Version 2
       </li>
       <li>
        Sharafaldin, I., Lashkari, A. H., &amp; Ghorbani, A. A. (2018). Toward Generating a New Intrusion Detection Dataset and Intrusion Traffic Characterization. ICISSP.
@@ -1031,21 +1115,11 @@
        .
       </li>
       <li>
-       <a href="https://arrow.apache.org/docs/python/">
-        Apache Arrow / PyArrow documentation
-       </a>
-       ;
-       <a href="https://github.com/ahlashkari/CICFlowMeter">
-        CICFlowMeter
-       </a>
-       , flow-feature extraction. Record versions and any additional external code used in the analysis.
-      </li>
-      <li>
        Project notebook: Adusumilli Viraat Krishna and Omer Mohammed Mubeenuddin,
        <a href="https://github.com/axylex/Multi-Class-Network-attack-classification/tree/b8401c1cbdad95366c2d76509542c526c0535d98">
         repository snapshot b8401c1
        </a>
-       . Numeric tables reproduced from saved validation outputs; XGBoost matrix transcribed from its saved plot.
+       . The audited notebook records which rows and features were removed and saves the rerun’s outputs.
       </li>
      </ol>
     </details>
@@ -1064,7 +1138,7 @@
   </footer>
   <noscript>
    <p class="note">
-    Enable JavaScript for the interactive explorers. The report and original notebook figures remain available without it.
+    Enable JavaScript for the interactive explorers. The report and audited notebook figures remain available without it.
    </p>
   </noscript>
  </body>
